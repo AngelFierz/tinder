@@ -13,10 +13,10 @@ session = SessionLocal()
 def get_usuario():
     try:
         usuarios = session.query(Usuario).all()
-        for u in usuarios:
-            print(f"ID: {u.id_usuario} | Nombre: {u.nombre_usuario} | Correo: {u.correo}")
+        return usuarios  # Devuelve la lista de usuarios para que la interfaz pueda usarla
     except Exception as e:
         print("Error al obtener usuarios:", e)
+        return []  # Devuelve lista vacía en caso de error
 
 
 def save_usuario(nombre_usuario, correo, contraseña):
@@ -24,67 +24,78 @@ def save_usuario(nombre_usuario, correo, contraseña):
         u = Usuario(nombre_usuario=nombre_usuario, correo=correo, contraseña=contraseña)
         session.add(u)
         session.commit()
-        print(f"Usuario {nombre_usuario} creado")
+        return True
     except Exception as e:
         session.rollback()
         print("Error al guardar usuario:", e)
+        return False
 
 
 def update_usuario(id_usuario, nombre_usuario, correo, contraseña):
     try:
-        usuario = session.query(Usuario).get(id_usuario)
+        usuario = session.get(Usuario, id_usuario)
         if usuario:
             usuario.nombre_usuario = nombre_usuario
             usuario.correo = correo
             usuario.contraseña = contraseña
             session.commit()
-            print(f"Usuario {id_usuario} actualizado")
+            return True
         else:
-            print("Usuario no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al actualizar usuario:", e)
+        return False
 
 
 def delete_usuario(id_usuario):
     try:
-        usuario = session.query(Usuario).get(id_usuario)
+        usuario = session.get(Usuario, id_usuario)
         if usuario:
             session.delete(usuario)
             session.commit()
-            print(f"Usuario {id_usuario} eliminado")
+            return True
         else:
-            print("Usuario no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al eliminar usuario:", e)
+        return False
+
 
 # === FUNCIONES DE PERFIL ===
 
 def get_perfiles():
     try:
         perfiles = session.query(Perfil).all()
-        for p in perfiles:
-            print(f"ID: {p.id_perfil} | Nombre: {p.nombre} | Genero: {p.genero} | Descripción: {p.descripcion}")
+        return perfiles  # Devuelve la lista de perfiles
     except Exception as e:
         print("Error al obtener perfiles:", e)
+        return []  # Lista vacía en caso de error
 
 
 def save_perfil(nombre, genero, descripcion, hijos, id_usuario, id_preferencia):
     try:
-        p = Perfil(nombre=nombre, genero=genero, descripcion=descripcion, hijos=hijos,
-                   id_usuario=id_usuario, id_preferencia=id_preferencia)
+        p = Perfil(
+            nombre=nombre,
+            genero=genero,
+            descripcion=descripcion,
+            hijos=hijos,
+            id_usuario=id_usuario,
+            id_preferencia=id_preferencia
+        )
         session.add(p)
         session.commit()
-        print(f"Perfil {nombre} creado")
+        return True
     except Exception as e:
         session.rollback()
         print("Error al guardar perfil:", e)
+        return False
 
 
 def update_perfil(id_perfil, nombre, genero, descripcion, hijos, id_preferencia):
     try:
-        perfil = session.query(Perfil).get(id_perfil)
+        perfil = session.get(Perfil, id_perfil)
         if perfil:
             perfil.nombre = nombre
             perfil.genero = genero
@@ -92,26 +103,28 @@ def update_perfil(id_perfil, nombre, genero, descripcion, hijos, id_preferencia)
             perfil.hijos = hijos
             perfil.id_preferencia = id_preferencia
             session.commit()
-            print(f"Perfil {id_perfil} actualizado")
+            return True
         else:
-            print("Perfil no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al actualizar perfil:", e)
+        return False
 
 
 def delete_perfil(id_perfil):
     try:
-        perfil = session.query(Perfil).get(id_perfil)
+        perfil = session.get(Perfil, id_perfil)
         if perfil:
             session.delete(perfil)
             session.commit()
-            print(f"Perfil {id_perfil} eliminado")
+            return True
         else:
-            print("Perfil no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al eliminar perfil:", e)
+        return False
 
 
 # === FUNCIONES DE PREFERENCIAS ===
@@ -119,10 +132,10 @@ def delete_perfil(id_perfil):
 def get_preferencias():
     try:
         prefs = session.query(Preferencias).all()
-        for pref in prefs:
-            print(f"ID: {pref.id_preferencia} | Descripción: {pref.descripcion}")
+        return prefs  # Devuelve lista de preferencias
     except Exception as e:
         print("Error al obtener preferencias:", e)
+        return []
 
 
 def save_preferencia(descripcion):
@@ -130,49 +143,51 @@ def save_preferencia(descripcion):
         p = Preferencias(descripcion=descripcion)
         session.add(p)
         session.commit()
-        print(f"Preferencia creada: {descripcion}")
+        return True
     except Exception as e:
         session.rollback()
         print("Error al guardar preferencia:", e)
+        return False
 
 
 def update_preferencia(id_preferencia, descripcion):
     try:
-        pref = session.query(Preferencias).get(id_preferencia)
+        pref = session.get(Preferencias, id_preferencia)
         if pref:
             pref.descripcion = descripcion
             session.commit()
-            print(f"Preferencia {id_preferencia} actualizada")
+            return True
         else:
-            print("Preferencia no encontrada")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al actualizar preferencia:", e)
+        return False
 
 
 def delete_preferencia(id_preferencia):
     try:
-        pref = session.query(Preferencias).get(id_preferencia)
+        pref = session.get(Preferencias, id_preferencia)
         if pref:
             session.delete(pref)
             session.commit()
-            print(f"Preferencia {id_preferencia} eliminada")
+            return True
         else:
-            print("Preferencia no encontrada")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al eliminar preferencia:", e)
+        return False
 
 
 # === FUNCIONES DE MATCHS ===
-
 def get_matchs():
     try:
         matchs = session.query(Matchs).all()
-        for m in matchs:
-            print(f"ID: {m.id_match} | Perfil1: {m.id_perfil1} | Perfil2: {m.id_perfil2}")
+        return matchs  # Devuelve la lista de matchs
     except Exception as e:
         print("Error al obtener matchs:", e)
+        return []
 
 
 def save_match(id_perfil1, id_perfil2):
@@ -180,50 +195,52 @@ def save_match(id_perfil1, id_perfil2):
         m = Matchs(id_perfil1=id_perfil1, id_perfil2=id_perfil2)
         session.add(m)
         session.commit()
-        print(f"Match creado entre {id_perfil1} y {id_perfil2}")
+        return True
     except Exception as e:
         session.rollback()
         print("Error al guardar match:", e)
+        return False
 
 
 def update_match(id_match, id_perfil1, id_perfil2):
     try:
-        match = session.query(Matchs).get(id_match)
+        match = session.get(Matchs, id_match)
         if match:
             match.id_perfil1 = id_perfil1
             match.id_perfil2 = id_perfil2
             session.commit()
-            print(f"Match {id_match} actualizado")
+            return True
         else:
-            print("Match no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al actualizar match:", e)
+        return False
 
 
 def delete_match(id_match):
     try:
-        match = session.query(Matchs).get(id_match)
+        match = session.get(Matchs, id_match)
         if match:
             session.delete(match)
             session.commit()
-            print(f"Match {id_match} eliminado")
+            return True
         else:
-            print("Match no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al eliminar match:", e)
+        return False
 
 
 # === FUNCIONES DE MENSAJES ===
-
 def get_mensajes():
     try:
         mensajes = session.query(Mensajes).all()
-        for msj in mensajes:
-            print(f"ID: {msj.id_mensaje} | Remitente: {msj.id_remitente} | Destinatario: {msj.id_destinatario} | Contenido: {msj.contenido}")
+        return mensajes  # Devuelve la lista de mensajes
     except Exception as e:
         print("Error al obtener mensajes:", e)
+        return []
 
 
 def save_mensaje(id_remitente, id_destinatario, contenido):
@@ -231,40 +248,43 @@ def save_mensaje(id_remitente, id_destinatario, contenido):
         msj = Mensajes(id_remitente=id_remitente, id_destinatario=id_destinatario, contenido=contenido)
         session.add(msj)
         session.commit()
-        print(f"Mensaje enviado de {id_remitente} a {id_destinatario}")
+        return True
     except Exception as e:
         session.rollback()
         print("Error al guardar mensaje:", e)
+        return False
 
 
 def update_mensaje(id_mensaje, id_remitente, id_destinatario, contenido):
     try:
-        msj = session.query(Mensajes).get(id_mensaje)
+        msj = session.get(Mensajes, id_mensaje)
         if msj:
             msj.id_remitente = id_remitente
             msj.id_destinatario = id_destinatario
             msj.contenido = contenido
             session.commit()
-            print(f"Mensaje {id_mensaje} actualizado")
+            return True
         else:
-            print("Mensaje no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al actualizar mensaje:", e)
+        return False
 
 
 def delete_mensaje(id_mensaje):
     try:
-        msj = session.query(Mensajes).get(id_mensaje)
+        msj = session.get(Mensajes, id_mensaje)
         if msj:
             session.delete(msj)
             session.commit()
-            print(f"Mensaje {id_mensaje} eliminado")
+            return True
         else:
-            print("Mensaje no encontrado")
+            return False
     except Exception as e:
         session.rollback()
         print("Error al eliminar mensaje:", e)
+        return False
 
 
 # === MENÚ PRINCIPAL ===
