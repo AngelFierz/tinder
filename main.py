@@ -4,6 +4,9 @@ from Entities.matchs import Matchs
 from Entities.mensajes import Mensajes
 from Entities.preferencias import Preferencias
 from persistence.db import SessionLocal
+from persistence.db import SessionLocal
+from Entities.perfil import Perfil
+
 
 session = SessionLocal()
 
@@ -188,6 +191,19 @@ def get_matchs():
     except Exception as e:
         print("Error al obtener matchs:", e)
         return []
+    
+def get_profiles():
+    """Recuperar todos los perfiles desde la base de datos y devolver una lista de objetos Perfil"""
+    session = SessionLocal()
+    try:
+        perfiles = session.query(Perfil).all()
+        return perfiles  # Devuelve la lista completa de perfiles con ID y nombre
+    except Exception as e:
+        print(f"Error al obtener perfiles: {e}")
+        return []
+    finally:
+        session.close()
+
 
 
 def save_match(id_perfil1, id_perfil2):
