@@ -1,48 +1,85 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
+import customtkinter as ctk
+from tkinter import messagebox
+from tkinter.ttk import Treeview, Style, Scrollbar, Combobox
 from main import save_mensaje, get_mensajes, update_mensaje, delete_mensaje
 from Entities.perfil import Perfil
 from persistence.db import SessionLocal
 
-class MessageManagement(tk.Toplevel):
+class MessageManagement(ctk.CTkToplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("Gestión de Mensajes")
-        self.geometry("700x400")
+        self.geometry("800x500")
+        self.configure(fg_color="#1a1a1a")
 
-        # Tabla de mensajes
-        self.tree = ttk.Treeview(self, columns=("id", "remitente", "destinatario", "contenido"), show="headings")
+        color_base = "#880d1e"
+        color_hover = "#dd2d4a"
+
+        opciones_boton = {
+            "fg_color": color_base,
+            "hover_color": color_hover,
+            "corner_radius": 3,
+            "text_color": "white",
+            "font": ("Arial", 12, "bold"),
+            "width": 180
+        }
+
+        # Frame tabla
+        table_frame = ctk.CTkFrame(self, fg_color="transparent")
+        table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        style = Style()
+        style.theme_use("clam")
+        style.configure("Treeview",
+                        background="#461220",
+                        foreground="white",
+                        fieldbackground="#461220",
+                        rowheight=25,
+                        font=("Arial", 13, "bold"))
+        style.configure("Treeview.Heading",
+                        background=color_base,
+                        foreground="white",
+                        font=("Arial", 15, "bold"))
+
+        self.tree = Treeview(table_frame, columns=("id", "remitente", "destinatario", "contenido"), show="headings")
         self.tree.heading("id", text="ID")
         self.tree.heading("remitente", text="Remitente")
         self.tree.heading("destinatario", text="Destinatario")
         self.tree.heading("contenido", text="Contenido")
-        self.tree.pack(fill=tk.BOTH, expand=True)
+
+        self.tree.column("id", width=50, anchor="center")
+        self.tree.column("remitente", width=150, anchor="center")
+        self.tree.column("destinatario", width=150, anchor="center")
+        self.tree.column("contenido", width=350, anchor="w")
+
+        self.tree.grid(row=0, column=0, sticky="nsew")
+
+        y_scroll = Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=y_scroll.set)
+        y_scroll.grid(row=0, column=1, sticky="ns")
+
+        table_frame.rowconfigure(0, weight=1)
+        table_frame.columnconfigure(0, weight=1)
 
         # Botones
-        btn_frame = tk.Frame(self)
-        btn_frame.pack(pady=10)
-
-        tk.Button(btn_frame, text="Agregar Mensaje", command=self.open_add_window).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="Editar Mensaje", command=self.open_edit_window).grid(row=0, column=1, padx=5)
-        tk.Button(btn_frame, text="Eliminar Mensaje", command=self.delete_selected_message).grid(row=0, column=2, padx=5)
+        ctk.CTkButton(self, text="Agregar Mensaje", command=self.open_add_window, **opciones_boton).pack(pady=5)
+        ctk.CTkButton(self, text="Editar Mensaje", command=self.open_edit_window, **opciones_boton).pack(pady=5)
+        ctk.CTkButton(self, text="Eliminar Mensaje", command=self.delete_selected_message, **opciones_boton).pack(pady=5)
 
         self.load_messages()
 
     def load_messages(self):
-        """Carga todos los mensajes en la tabla"""
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        self.tree.delete(*self.tree.get_children())
 
-        mensajes = get_mensajes()
         db = SessionLocal()
         perfiles = {p.id_perfil: p.nombre for p in db.query(Perfil).all()}
+        mensajes = get_mensajes()
+        db.close()
 
         for m in mensajes:
             nombre_rem = perfiles.get(m.id_remitente, f"ID {m.id_remitente}")
             nombre_dest = perfiles.get(m.id_destinatario, f"ID {m.id_destinatario}")
-            self.tree.insert("", tk.END, values=(m.id_mensaje, nombre_rem, nombre_dest, m.contenido))
-
-        db.close()
+            self.tree.insert("", "end", values=(m.id_mensaje, nombre_rem, nombre_dest, m.contenido))
 
     def open_add_window(self):
         self._open_message_form("Agregar")
@@ -57,34 +94,32 @@ class MessageManagement(tk.Toplevel):
         self._open_message_form("Editar", values)
 
     def _open_message_form(self, mode, values=None):
-        """Formulario para agregar o editar mensajes"""
-        form = tk.Toplevel(self)
+        form = ctk.CTkToplevel(self)
         form.title(f"{mode} Mensaje")
-        form.geometry("300x250")
+        form.geometry("350x300")
+        form.configure(fg_color="#2b2b2b")
 
         db = SessionLocal()
         perfiles = db.query(Perfil).all()
         db.close()
 
-        tk.Label(form, text="Remitente:").pack(pady=5)
-        cb_rem = ttk.Combobox(form, state="readonly")
-        cb_rem['values'] = [f"{p.id_perfil} - {p.nombre}" for p in perfiles]
+        nombres_perfiles = [f"{p.id_perfil} - {p.nombre}" for p in perfiles]
+
+        ctk.CTkLabel(form, text="Remitente:", text_color="white").pack(pady=5)
+        cb_rem = Combobox(form, values=nombres_perfiles, state="readonly")
         cb_rem.pack()
 
-        tk.Label(form, text="Destinatario:").pack(pady=5)
-        cb_dest = ttk.Combobox(form, state="readonly")
-        cb_dest['values'] = [f"{p.id_perfil} - {p.nombre}" for p in perfiles]
+        ctk.CTkLabel(form, text="Destinatario:", text_color="white").pack(pady=5)
+        cb_dest = Combobox(form, values=nombres_perfiles, state="readonly")
         cb_dest.pack()
 
-        tk.Label(form, text="Contenido:").pack(pady=5)
-        contenido_entry = tk.Entry(form)
+        ctk.CTkLabel(form, text="Contenido:", text_color="white").pack(pady=5)
+        contenido_entry = ctk.CTkEntry(form)
         contenido_entry.pack(pady=5)
 
         if mode == "Editar" and values:
             mensaje_id, remitente, destinatario, contenido = values
             contenido_entry.insert(0, contenido)
-
-            # Selección automática de remitente y destinatario
             for p in perfiles:
                 if p.nombre == remitente:
                     cb_rem.set(f"{p.id_perfil} - {p.nombre}")
@@ -112,7 +147,8 @@ class MessageManagement(tk.Toplevel):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        tk.Button(form, text="Guardar", command=submit).pack(pady=10)
+        ctk.CTkButton(form, text="Guardar", command=submit,
+                      fg_color="#0f5132", hover_color="#198754", text_color="white").pack(pady=10)
 
     def delete_selected_message(self):
         selected = self.tree.selection()
@@ -121,10 +157,11 @@ class MessageManagement(tk.Toplevel):
             return
 
         mensaje_id = self.tree.item(selected[0])["values"][0]
-        try:
-            delete_mensaje(mensaje_id)
-            messagebox.showinfo("Éxito", "Mensaje eliminado.")
-            self.load_messages()
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
+        confirm = messagebox.askyesno("Confirmación", "¿Estás seguro de que quieres eliminar este mensaje?")
+        if confirm:
+            try:
+                delete_mensaje(mensaje_id)
+                messagebox.showinfo("Éxito", "Mensaje eliminado.")
+                self.load_messages()
+            except Exception as e:
+                messagebox.showerror("Error", str(e))

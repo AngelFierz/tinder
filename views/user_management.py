@@ -1,51 +1,78 @@
-import tkinter as tk
+import customtkinter as ctk
 from tkinter import messagebox
 from tkinter import ttk
 from persistence.db import SessionLocal
 from Entities.usuario import Usuario
-from main import save_usuario, get_usuario, delete_usuario, update_usuario  # Importamos las funciones
+from main import save_usuario, get_usuario, delete_usuario, update_usuario
 
-class UserManagement(tk.Toplevel):
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")  
+
+class UserManagement(ctk.CTkToplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("Gestión de Usuarios")
-        self.geometry("550x380")
+        self.geometry("600x400")
+        
+        self.color_primary = "#880d1e"
+        self.color_accent = "#dd2d4a"
+        self.color_bg = "#262626"
+        self.configure(fg_color=self.color_bg)
 
-        # Tabla
+        style = ttk.Style(self)
+        style.theme_use("default")
+
+        style.configure("Custom.Treeview",
+                        background=self.color_bg,
+                        fieldbackground=self.color_bg,
+                        foreground="white",
+                        font=("Arial", 14, "bold"))
+        style.configure("Custom.Treeview.Heading",
+                        background=self.color_primary,
+                        foreground="white",
+                        font=("Arial", 16, "bold"))
+
+        style.map("Custom.Treeview",
+                  background=[("selected", self.color_accent)],
+                  foreground=[("selected", "white")])
+
         self.tree = ttk.Treeview(
             self,
             columns=("id", "nombre", "correo"),
             show="headings",
-            height=8
+            height=8,
+            style="Custom.Treeview"
         )
         self.tree.heading("id", text="ID")
         self.tree.heading("nombre", text="Nombre")
         self.tree.heading("correo", text="Correo")
         self.tree.column("id", width=50, anchor="center")
-        self.tree.column("nombre", width=150)
-        self.tree.column("correo", width=200)
-        self.tree.grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 0), sticky="nsew")
+        self.tree.column("nombre", width=180)
+        self.tree.column("correo", width=280)
+        self.tree.grid(row=0, column=0, columnspan=4, padx=15, pady=(15, 0), sticky="nsew")
 
-        # Scrollbar vertical
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscroll=scrollbar.set)
-        scrollbar.grid(row=0, column=3, sticky="ns", pady=(10, 0))
+        scrollbar.grid(row=0, column=4, sticky="ns", pady=(15, 0))
 
-        # Botones
-        tk.Button(self, text="Agregar",  command=self.open_add_window, width=12).grid(row=1, column=0, pady=15)
-        tk.Button(self, text="Editar",   command=self.open_edit_window, width=12).grid(row=1, column=1, pady=15)
-        tk.Button(self, text="Eliminar", command=self.delete_user, width=12).grid(row=1, column=2, pady=15)
+        btn_agregar = ctk.CTkButton(self, text="Agregar", width=120, fg_color=self.color_primary,
+                                    hover_color=self.color_accent, command=self.open_add_window)
+        btn_editar = ctk.CTkButton(self, text="Editar", width=120, fg_color=self.color_primary,
+                                   hover_color=self.color_accent, command=self.open_edit_window)
+        btn_eliminar = ctk.CTkButton(self, text="Eliminar", width=120, fg_color=self.color_primary,
+                                     hover_color=self.color_accent, command=self.delete_user)
 
-        # Ajustar expansión de filas/columnas
+        btn_agregar.grid(row=1, column=0, pady=20, padx=10, sticky="ew")
+        btn_editar.grid(row=1, column=1, pady=20, padx=10, sticky="ew")
+        btn_eliminar.grid(row=1, column=2, pady=20, padx=10, sticky="ew")
+
+        # Ajustar expansión
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(3, weight=1)
 
-        # Cargar usuarios al arrancar
         self.load_users()
 
-    # Cargar datos
     def load_users(self):
-        """Vuelve a cargar la tabla completa"""
         for row in self.tree.get_children():
             self.tree.delete(row)
 
@@ -55,7 +82,6 @@ class UserManagement(tk.Toplevel):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudieron obtener usuarios: {e}")
 
-    # Eliminar
     def delete_user(self):
         selected = self.tree.selection()
         if not selected:
@@ -72,22 +98,23 @@ class UserManagement(tk.Toplevel):
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo eliminar: {e}")
 
-    # Ventana: Agregar
     def open_add_window(self):
-        ventana = tk.Toplevel(self)
+        ventana = ctk.CTkToplevel(self)
         ventana.title("Agregar Usuario")
-        ventana.geometry("300x200")
+        ventana.geometry("350x250")
+        ventana.configure(fg_color=self.color_bg)
 
-        tk.Label(ventana, text="Nombre:").pack(pady=5)
-        entry_nombre = tk.Entry(ventana)
+        # Entradas con etiquetas ctk y colores aplicados
+        ctk.CTkLabel(ventana, text="Nombre:", text_color="white").pack(pady=(15, 5))
+        entry_nombre = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white")
         entry_nombre.pack()
 
-        tk.Label(ventana, text="Correo:").pack(pady=5)
-        entry_correo = tk.Entry(ventana)
+        ctk.CTkLabel(ventana, text="Correo:", text_color="white").pack(pady=(15, 5))
+        entry_correo = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white")
         entry_correo.pack()
 
-        tk.Label(ventana, text="Contraseña:").pack(pady=5)
-        entry_contrasena = tk.Entry(ventana, show="*")
+        ctk.CTkLabel(ventana, text="Contraseña:", text_color="white").pack(pady=(15, 5))
+        entry_contrasena = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white", show="*")
         entry_contrasena.pack()
 
         def guardar():
@@ -106,9 +133,9 @@ class UserManagement(tk.Toplevel):
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo crear: {e}")
 
-        tk.Button(ventana, text="Guardar", command=guardar).pack(pady=10)
+        ctk.CTkButton(ventana, text="Guardar", width=100, fg_color=self.color_primary,
+                      hover_color=self.color_accent, command=guardar).pack(pady=20)
 
-    # Ventana: Editar
     def open_edit_window(self):
         selected = self.tree.selection()
         if not selected:
@@ -117,24 +144,25 @@ class UserManagement(tk.Toplevel):
         values = self.tree.item(selected[0], "values")
         user_id, nombre_actual, correo_actual = values
 
-        ventana = tk.Toplevel(self)
+        ventana = ctk.CTkToplevel(self)
         ventana.title("Editar Usuario")
-        ventana.geometry("300x230")
+        ventana.geometry("350x280")
+        ventana.configure(fg_color=self.color_bg)
 
-        tk.Label(ventana, text=f"ID: {user_id}").pack(pady=5)
+        ctk.CTkLabel(ventana, text=f"ID: {user_id}", text_color="white").pack(pady=(15, 5))
 
-        tk.Label(ventana, text="Nombre:").pack(pady=5)
-        entry_nombre = tk.Entry(ventana)
+        ctk.CTkLabel(ventana, text="Nombre:", text_color="white").pack(pady=(10, 5))
+        entry_nombre = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white")
         entry_nombre.insert(0, nombre_actual)
         entry_nombre.pack()
 
-        tk.Label(ventana, text="Correo:").pack(pady=5)
-        entry_correo = tk.Entry(ventana)
+        ctk.CTkLabel(ventana, text="Correo:", text_color="white").pack(pady=(10, 5))
+        entry_correo = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white")
         entry_correo.insert(0, correo_actual)
         entry_correo.pack()
 
-        tk.Label(ventana, text="Contraseña:").pack(pady=5)
-        entry_contrasena = tk.Entry(ventana, show="*")
+        ctk.CTkLabel(ventana, text="Contraseña:", text_color="white").pack(pady=(10, 5))
+        entry_contrasena = ctk.CTkEntry(ventana, width=280, fg_color="#461220", text_color="white", show="*")
         entry_contrasena.pack()
 
         def actualizar():
@@ -153,4 +181,5 @@ class UserManagement(tk.Toplevel):
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo actualizar: {e}")
 
-        tk.Button(ventana, text="Guardar Cambios", command=actualizar).pack(pady=10)
+        ctk.CTkButton(ventana, text="Guardar Cambios", width=140, fg_color=self.color_primary,
+                      hover_color=self.color_accent, command=actualizar).pack(pady=20)
