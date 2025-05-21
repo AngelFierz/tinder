@@ -1,140 +1,256 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 from main import save_perfil, update_perfil, delete_perfil, get_perfiles
+from Entities.usuario import Usuario
+from Entities.preferencias import Preferencias
+from Entities.perfil import Perfil
+from persistence.db import SessionLocal
 
 class ProfileManagement(tk.Toplevel):
     def __init__(self, master):
         super().__init__(master)
         self.title("Gestión de Perfiles")
-        self.geometry("400x500")
+        self.geometry("900x400")
 
-        # Entradas
-        tk.Label(self, text="ID (para actualizar/eliminar):").grid(row=0, column=0, padx=10, pady=5)
-        self.entry_id = tk.Entry(self)
-        self.entry_id.grid(row=0, column=1)
+        # Frame contenedor para Treeview y scrollbars
+        table_frame = tk.Frame(self)
+        table_frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(self, text="Nombre:").grid(row=1, column=0, padx=10, pady=5)
-        self.entry_nombre = tk.Entry(self)
-        self.entry_nombre.grid(row=1, column=1)
+        self.tree = ttk.Treeview(table_frame, columns=("id", "nombre", "genero", "descripcion", "hijos", "usuario", "preferencia"), show="headings")
+        for col in self.tree["columns"]:
+            self.tree.heading(col, text=col.capitalize())
 
-        tk.Label(self, text="Género:").grid(row=2, column=0, padx=10, pady=5)
-        self.entry_genero = tk.Entry(self)
-        self.entry_genero.grid(row=2, column=1)
+        # Establecer ancho para cada columna
+        column_widths = {
+            "id": 50,
+            "nombre": 100,
+            "genero": 70,
+            "descripcion": 200,
+            "hijos": 60,
+            "usuario": 120,
+            "preferencia": 100
+        }
+        for col in self.tree["columns"]:
+            self.tree.column(col, width=column_widths.get(col, 100), anchor="center")
 
-        tk.Label(self, text="Descripción:").grid(row=3, column=0, padx=10, pady=5)
-        self.entry_descripcion = tk.Entry(self)
-        self.entry_descripcion.grid(row=3, column=1)
+        # Scrollbars
+        scrollbar_y = tk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        scrollbar_x = tk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
 
-        tk.Label(self, text="Hijos:").grid(row=4, column=0, padx=10, pady=5)
-        self.entry_hijos = tk.Entry(self)
-        self.entry_hijos.grid(row=4, column=1)
+        # Posicionar con grid
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        scrollbar_y.grid(row=0, column=1, sticky="ns")
+        scrollbar_x.grid(row=1, column=0, sticky="ew")
 
-        tk.Label(self, text="ID Usuario:").grid(row=5, column=0, padx=10, pady=5)
-        self.entry_id_usuario = tk.Entry(self)
-        self.entry_id_usuario.grid(row=5, column=1)
-
-        tk.Label(self, text="ID Preferencia:").grid(row=6, column=0, padx=10, pady=5)
-        self.entry_id_preferencia = tk.Entry(self)
-        self.entry_id_preferencia.grid(row=6, column=1)
+        # Expansión automática
+        table_frame.rowconfigure(0, weight=1)
+        table_frame.columnconfigure(0, weight=1)
+        # Configurar el tamaño mínimo de la ventana
 
         # Botones
-        tk.Button(self, text="Crear Perfil", command=self.create_perfil).grid(row=7, column=0, pady=10)
-        tk.Button(self, text="Actualizar Perfil", command=self.update_perfil).grid(row=7, column=1, pady=10)
-        tk.Button(self, text="Eliminar Perfil", command=self.delete_perfil).grid(row=8, column=0, pady=10)
-        tk.Button(self, text="Ver Perfiles", command=self.view_perfiles).grid(row=8, column=1, pady=10)
+        btn_frame = tk.Frame(self)
+        btn_frame.pack(pady=10)
 
-    def create_perfil(self):
-        nombre = self.entry_nombre.get()
-        genero = self.entry_genero.get()
-        descripcion = self.entry_descripcion.get()
-        hijos = self.entry_hijos.get()
-        id_usuario = self.entry_id_usuario.get()
-        id_preferencia = self.entry_id_preferencia.get()
+        tk.Button(btn_frame, text="Agregar Perfil", command=self.open_add_window).grid(row=0, column=0, padx=5)
+        tk.Button(btn_frame, text="Editar Perfil", command=self.open_edit_window).grid(row=0, column=1, padx=5)
+        tk.Button(btn_frame, text="Eliminar Perfil", command=self.delete_selected_profile).grid(row=0, column=2, padx=5)
 
-        # Validación de campos obligatorios
-        if not nombre or not genero or not descripcion or not hijos:
-            messagebox.showerror("Error", "Los campos Nombre, Género, Descripción y Hijos son obligatorios.")
+        self.load_profiles()
+
+    def load_profiles(self):
+        """Carga los perfiles desde la base de datos en la tabla"""
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        perfiles = get_perfiles()
+        db = SessionLocal()
+        usuarios = {u.id_usuario: u.nombre_usuario for u in db.query(Usuario).all()}
+        preferencias = {p.id_preferencia: p.descripcion for p in db.query(Preferencias).all()}
+        db.close()
+
+        self.perfil_id_map = {}  # Inicializa aquí correctamente
+
+        for p in perfiles:
+            self.tree.insert("", tk.END, values=(
+                p.id_perfil,
+                p.nombre,
+                p.genero,
+                p.descripcion,
+                p.hijos,
+                usuarios.get(p.id_usuario, f"Usuario {p.id_usuario}"),
+                preferencias.get(p.id_preferencia, f"Preferencia {p.id_preferencia}")
+            ))
+
+            # Guarda los IDs correctos para cada perfil
+            self.perfil_id_map[p.id_perfil] = {
+                "id_usuario": p.id_usuario,
+                "id_preferencia": p.id_preferencia
+            }
+
+
+    def open_add_window(self):
+        self.open_form_window("Agregar")
+
+    def open_edit_window(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Advertencia", "Selecciona un perfil para editar.")
             return
 
+        values = self.tree.item(selected[0])["values"]
+        id_perfil = values[0] 
+
+        ids_reales = self.perfil_id_map.get(id_perfil, {})
+        id_usuario = ids_reales.get("id_usuario")
+        id_preferencia = ids_reales.get("id_preferencia")
+
+        self.open_form_window("Editar", values, id_usuario, id_preferencia)
+
+
+    def open_form_window(self, mode, values=None, id_usuario=None, id_preferencia=None):
+        """Formulario para agregar o editar perfiles"""
+        form = tk.Toplevel(self)
+        form.title(f"{mode} Perfil")
+        form.geometry("400x400")
+
+        db = SessionLocal()
+        usuarios = db.query(Usuario).all()
+        preferencias = db.query(Preferencias).all()
+        db.close()
+
+        # Crear campos
+        labels = ["Nombre", "Género", "Descripción", "Hijos", "Usuario", "Preferencia"]
+        self.entries = {}
+
+        for i, label in enumerate(labels[:4]):  # Solo los primeros 4 son Entry
+            tk.Label(form, text=label + ":").grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            entry = tk.Entry(form)
+            entry.grid(row=i, column=1, pady=5)
+            self.entries[label.lower()] = entry
+
+        # ComboBox para Usuario
+        tk.Label(form, text="Usuario:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        cb_usuario = ttk.Combobox(form, state="readonly")
+        cb_usuario['values'] = [f"{u.id_usuario} - {u.nombre_usuario}" for u in usuarios]
+        cb_usuario.grid(row=4, column=1, pady=5)
+
+        # ComboBox para Preferencia
+        tk.Label(form, text="Preferencia:").grid(row=5, column=0, sticky="w", padx=10, pady=5)
+        cb_preferencia = ttk.Combobox(form, state="readonly")
+        cb_preferencia['values'] = [f"{p.id_preferencia} - {p.descripcion}" for p in preferencias]
+        cb_preferencia.grid(row=5, column=1, pady=5)
+
+        # Cargar datos si es edición
+        if mode == "Editar" and values:
+            id_perfil, nombre, genero, descripcion, hijos, _, _ = values
+            self.entries["nombre"].insert(0, nombre)
+            self.entries["género"].insert(0, genero)
+            self.entries["descripción"].insert(0, descripcion)
+            self.entries["hijos"].insert(0, hijos)
+
+            if id_usuario is not None:
+                for u in usuarios:
+                    if u.id_usuario == id_usuario:
+                        cb_usuario.set(f"{u.id_usuario} - {u.nombre_usuario}")
+                        break
+
+            if id_preferencia is not None:
+                for p in preferencias:
+                    if p.id_preferencia == id_preferencia:
+                        cb_preferencia.set(f"{p.id_preferencia} - {p.descripcion}")
+                        break
+
+
+        # Función para guardar
+        def submit():
+            try:
+                nombre = self.entries["nombre"].get()
+                genero = self.entries["género"].get()
+                descripcion = self.entries["descripción"].get()
+                hijos = self.entries["hijos"].get()
+                id_usuario = int(cb_usuario.get().split(" - ")[0])
+                id_preferencia = int(cb_preferencia.get().split(" - ")[0])
+
+                if not all([nombre, genero, descripcion, hijos]):
+                    raise ValueError("Todos los campos deben estar llenos.")
+
+                db = SessionLocal()
+                existing = db.query(Perfil).filter_by(id_usuario=id_usuario).first()
+                db.close()
+
+                if mode == "Agregar":
+                    if existing:
+                        messagebox.showerror("Error", "Este usuario ya tiene un perfil asignado.")
+                        return
+                    save_perfil(nombre, genero, descripcion, hijos, id_usuario, id_preferencia)
+                    messagebox.showinfo("Éxito", "Perfil creado.")
+                else:
+                    # Validar que no se asigne un usuario que ya tiene otro perfil
+                    if existing and existing.id_perfil != id_perfil:
+                        messagebox.showerror("Error", "Este usuario ya tiene un perfil asignado.")
+                        return
+                    update_perfil(id_perfil, nombre, genero, descripcion, hijos, id_usuario, id_preferencia)
+                    messagebox.showinfo("Éxito", "Perfil actualizado.")
+
+                form.destroy()
+                self.load_profiles()
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        # Botones
+        tk.Button(form, text="Guardar", command=submit).grid(row=6, column=0, columnspan=2, pady=10)
+        tk.Button(form, text="Cancelar", command=form.destroy).grid(row=7, column=0, columnspan=2, pady=5)
+
+
+    def save_profile(self, mode):
         try:
-            save_perfil(
-                nombre=nombre,
-                genero=genero,
-                descripcion=descripcion,
-                hijos=int(hijos),
-                id_usuario=int(id_usuario) if id_usuario else None,
-                id_preferencia=int(id_preferencia) if id_preferencia else None
-            )
-            messagebox.showinfo("Éxito", "Perfil creado correctamente.")
-            self.clear_fields()
-        except Exception as e:
-            messagebox.showerror("Error", f"Error al crear perfil: {e}")
+            perfil_data = {
+                key: self.entries[key].get() for key in self.entries               
+            }
 
-    def update_perfil(self):
-        perfil_id = self.entry_id.get()
-        nombre = self.entry_nombre.get()
-        genero = self.entry_genero.get()
-        descripcion = self.entry_descripcion.get()
-        hijos = self.entry_hijos.get()
-        id_preferencia = self.entry_id_preferencia.get()
+            # Validación mínima
+            if not perfil_data["nombre"] or not perfil_data["genero"] or not perfil_data["descripcion"] or not perfil_data["hijos"]:
+                messagebox.showerror("Error", "Los campos Nombre, Género, Descripción y Hijos son obligatorios.")
+                return
 
-        if not perfil_id:
-            messagebox.showerror("Error", "ID del perfil es obligatorio para actualizar.")
-            return
-
-        if not nombre or not genero or not descripcion or not hijos:
-            messagebox.showerror("Error", "Todos los campos excepto ID Usuario son obligatorios para actualizar.")
-            return
-
-        try:
-            update_perfil(
-                id_perfil=int(perfil_id),
-                nombre=nombre,
-                genero=genero,
-                descripcion=descripcion,
-                hijos=int(hijos),
-                id_preferencia=int(id_preferencia) if id_preferencia else None
-            )
-            messagebox.showinfo("Éxito", "Perfil actualizado.")
-            self.clear_fields()
-        except Exception as e:
-            messagebox.showerror("Error", f"Error al actualizar perfil: {e}")
-
-    def delete_perfil(self):
-        perfil_id = self.entry_id.get()
-
-        if not perfil_id:
-            messagebox.showerror("Error", "ID del perfil es obligatorio para eliminar.")
-            return
-
-        try:
-            delete_perfil(int(perfil_id))
-            messagebox.showinfo("Éxito", "Perfil eliminado.")
-            self.clear_fields()
-        except Exception as e:
-            messagebox.showerror("Error", f"Error al eliminar perfil: {e}")
-
-    def view_perfiles(self):
-        try:
-            perfiles = get_perfiles()
-            if perfiles:
-                perfiles_str = "\n".join([
-                    f"ID: {p.id_perfil} | Nombre: {p.nombre} | Género: {p.genero} | Usuario: {p.id_usuario} | Preferencia: {p.id_preferencia}"
-                    for p in perfiles
-                ])
+            if mode == "Agregar":
+                save_perfil(
+                    nombre=perfil_data["nombre"],
+                    genero=perfil_data["genero"],
+                    descripcion=perfil_data["descripcion"],
+                    hijos=int(perfil_data["hijos"]),
+                    id_usuario=int(perfil_data["id usuario"]) if perfil_data["id usuario"] else None,
+                    id_preferencia=int(perfil_data["id preferencia"]) if perfil_data["id preferencia"] else None
+                )
+                messagebox.showinfo("Éxito", "Perfil creado correctamente.")
             else:
-                perfiles_str = "No hay perfiles registrados."
+                update_perfil(
+                    id_perfil=int(perfil_data["id"]),
+                    nombre=perfil_data["nombre"],
+                    genero=perfil_data["genero"],
+                    descripcion=perfil_data["descripcion"],
+                    hijos=int(perfil_data["hijos"]),
+                    id_usuario=int(perfil_data["id usuario"]) if perfil_data["id usuario"] else None,
+                    id_preferencia=int(perfil_data["id preferencia"]) if perfil_data["id preferencia"] else None                   
+                )
+                messagebox.showinfo("Éxito", "Perfil actualizado correctamente.")
 
-            messagebox.showinfo("Perfiles", perfiles_str)
+            self.load_profiles()
         except Exception as e:
-            messagebox.showerror("Error", f"Error al obtener perfiles: {e}")
+            messagebox.showerror("Error", f"Ocurrió un error: {e}")
 
-    def clear_fields(self):
-        self.entry_id.delete(0, tk.END)
-        self.entry_nombre.delete(0, tk.END)
-        self.entry_genero.delete(0, tk.END)
-        self.entry_descripcion.delete(0, tk.END)
-        self.entry_hijos.delete(0, tk.END)
-        self.entry_id_usuario.delete(0, tk.END)
-        self.entry_id_preferencia.delete(0, tk.END)
+    def delete_selected_profile(self):
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("Advertencia", "Selecciona un perfil para eliminar.")
+            return
 
+        perfil_id = self.tree.item(selected[0])["values"][0]
+        if messagebox.askyesno("Confirmar", "¿Estás seguro de que quieres eliminar este perfil?"):
+            try:
+                delete_perfil(int(perfil_id))
+                self.load_profiles()
+                messagebox.showinfo("Éxito", "Perfil eliminado.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al eliminar el perfil: {e}")
